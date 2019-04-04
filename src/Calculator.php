@@ -5,16 +5,10 @@ declare(strict_types=1);
 namespace DevXyz\Challenge\Paydate;
 
 use DevXyz\Challenge\Paydate\ValueObject\Model;
+use DevXyz\Challenge\Paydate\ValueObject\Paydate;
 
 final class Calculator implements CalculatorInterface
 {
-    private const FORMAT_DATE     = 'Y-m-d';
-    private const FORMAT_WEEKDAY  = 'w';
-
-    private const MODIFY_MIDNIGHT = 'midnight';
-    private const MODIFY_INCR     = '+1 day';
-    private const MODIFY_DECR     = '-1 day';
-
     /**
      * @var string
      */
@@ -28,13 +22,13 @@ final class Calculator implements CalculatorInterface
     /**
      * {@inheritdoc}
      */
-    public function __construct(string $paydateModel, array $holidays = [], $holidayFactory = '')
+    public function __construct(string $paydateModel, array $holidays = [])
     {
         $this->model    = Model::fromNative($paydateModel);
         $this->holidays = [];
 
         foreach ($holidays as $date) {
-            $this->toDateObject($date);
+            Paydate::fromNative($date);
             $this->holidays[$date] = true;
         }
     }
@@ -44,28 +38,28 @@ final class Calculator implements CalculatorInterface
      */
     public function calculatePaydates(string $initialPaydate, int $numberOfPaydates): array
     {
-        $date  = $this->toDateObject($initialPaydate);
+        $date  = Paydate::fromNative($initialPaydate);
         $dates = [$initialPaydate];
 
         for ($i = 0; $i < $numberOfPaydates - 1; ++$i) {
             $date = $date->modify($this->model->toUnits());
 
             if ($this->isHoliday($date)) {
-                $dates[] = $this->toDateString($this->decreasePaydate($date));
+                $dates[] = (string) $this->decreasePaydate($date);
                 continue;
             }
 
             if ($this->isWeekend($date)) {
-                $dates[] = $this->toDateString($this->increasePaydate($date));
+                $dates[] = (string) $this->increasePaydate($date);
                 continue;
             }
 
             if ($this->isToday($date)) {
-                $dates[] = $this->toDateString($this->increasePaydate($date));
+                $dates[] = (string) $this->increasePaydate($date);
                 continue;
             }
 
-            $dates[] = $this->toDateString($date);
+            $dates[] = (string) $date;
         }
 
         return $dates;
@@ -74,26 +68,25 @@ final class Calculator implements CalculatorInterface
     /**
      * Checks whether $date is a holiday.
      *
-     * @param \DateTimeImmutable $date
+     * @param Paydate $date
      *
      * @return bool
      */
-    public function isHoliday(\DateTimeImmutable $date): bool
+    public function isHoliday(Paydate $date): bool
     {
-        return isset($this->holidays[$date->format($this::FORMAT_DATE)]);
+        return isset($this->holidays[(string) $date]);
     }
 
     /**
      * Checks whether $date is a weekend.
      *
-     * @param \DateTimeImmutable $date
+     * @param Paydate $date
      *
      * @return bool
      */
-    public function isWeekend(\DateTimeImmutable $date): bool
+    public function isWeekend(Paydate $date): bool
     {
-        $day = (int) $date->format($this::FORMAT_WEEKDAY);
-        return 0 === $day || 6 === $day;
+        return 0 === $date->getWeekday() || 6 === $date->getWeekday();
     }
 
     /**
@@ -103,10 +96,9 @@ final class Calculator implements CalculatorInterface
      *
      * @return bool
      */
-    public function isToday(\DateTimeImmutable $date): bool
+    public function isToday(Paydate $date): bool
     {
-        $today = (new \DateTimeImmutable())->modify($this::MODIFY_MIDNIGHT);
-        return 0 === $today->diff($date)->d;
+        return $date->equals(Paydate::today());
     }
 
     /**
@@ -116,7 +108,7 @@ final class Calculator implements CalculatorInterface
      *
      * @return bool
      */
-    public function isValidPaydate(\DateTimeImmutable $date): bool
+    public function isValidPaydate(Paydate $date): bool
     {
         return !($this->isWeekend($date) || $this->isHoliday($date) || $this->isToday($date));
     }
@@ -128,10 +120,13 @@ final class Calculator implements CalculatorInterface
      *
      * @return \DateTimeImmutable
      */
-    public function increasePaydate(\DateTimeImmutable $date): \DateTimeImmutable
+    public function increasePaydate(Paydate $date): Paydate
     {
-        $date = $date->modify($this::MODIFY_INCR);
-        return $this->isValidPaydate($date) ? $date : $this->increasePaydate($date);
+        do {
+            $date = $date->increment();
+        } while (!$this->isValidPaydate($date));
+
+        return $date;
     }
 
     /**
@@ -141,44 +136,12 @@ final class Calculator implements CalculatorInterface
      *
      * @return \DateTimeImmutable
      */
-    public function decreasePaydate(\DateTimeImmutable $date): \DateTimeImmutable
+    public function decreasePaydate(Paydate $date): Paydate
     {
-        $date = $date->modify($this::MODIFY_DECR);
-        return $this->isValidPaydate($date) ? $date : $this->decreasePaydate($date);
-    }
+        do {
+            $date = $date->decrement();
+        } while (!$this->isValidPaydate($date));
 
-    /**
-     * Converts $dateStr to DateTimeImmutable object.
-     *
-     * @param string $dateStr
-     *
-     * @throws \InvalidArgumentException
-     *
-     * @return \DateTimeImmutable
-     */
-    private function toDateObject(string $dateStr): \DateTimeImmutable
-    {
-        $date = \DateTimeImmutable::createFromFormat($this::FORMAT_DATE, $dateStr);
-
-        if (false === $date) {
-            throw new \InvalidArgumentException('Invalid date');
-        }
-
-        return $date->modify($this::MODIFY_MIDNIGHT);
-    }
-
-    /**
-     * Converts $dateStr to DateTimeImmutable object.
-     *
-     * @param string             $dateStr
-     * @param \DateTimeImmutable $date
-     *
-     * @throws \InvalidArgumentException
-     *
-     * @return \DateTimeImmutable
-     */
-    private function toDateString(\DateTimeImmutable $date): string
-    {
-        return $date->format($this::FORMAT_DATE);
+        return $date;
     }
 }

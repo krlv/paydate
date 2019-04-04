@@ -7,6 +7,7 @@ namespace DevXyz\Challenge\Paydate\Test;
 use DevXyz\Challenge\Paydate\Calculator;
 use DevXyz\Challenge\Paydate\CalculatorInterface;
 use DevXyz\Challenge\Paydate\Test\Traits\VisibilityTrait;
+use DevXyz\Challenge\Paydate\ValueObject\Paydate;
 use PHPUnit\Framework\TestCase;
 
 final class CalculatorTest extends TestCase
@@ -45,7 +46,7 @@ final class CalculatorTest extends TestCase
      */
     public function testIsHoliday(string $dateStr, bool $expected): void
     {
-        $date       = \DateTimeImmutable::createFromFormat('Y-m-d', $dateStr);
+        $date       = Paydate::fromNative($dateStr);
         $calculator = new Calculator(CalculatorInterface::PAYDATE_MODEL_WEEKLY, ['2019-01-01', '2019-12-25']);
         $this->assertEquals($expected, $calculator->isHoliday($date));
     }
@@ -58,7 +59,7 @@ final class CalculatorTest extends TestCase
      */
     public function testIsWeekend(string $dateStr, bool $expected): void
     {
-        $date       = \DateTimeImmutable::createFromFormat('Y-m-d', $dateStr);
+        $date       = Paydate::fromNative($dateStr);
         $calculator = new Calculator(CalculatorInterface::PAYDATE_MODEL_WEEKLY);
         $this->assertEquals($expected, $calculator->isWeekend($date));
     }
