@@ -1,0 +1,26 @@
+# Dependencies lock
+composer.lock
+
+# Managed by Composer
+/bin/
+/vendor/
+
+# PHPUnit
+phpunit.xml
+.phpunit.result.cache
+
+# PHP CodeStyle Fixer
+.php_cs
+.php_cs.cache
+
+# PHP CodeSniffer
+phpcs.xml
+.phpcs-cache
+
+# PHPStan
+phpstan.neon
+
+# User Environment Variables
+.idea
+.DS_Store
+.project
