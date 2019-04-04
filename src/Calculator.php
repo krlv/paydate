@@ -10,19 +10,15 @@ final class Calculator implements CalculatorInterface
 {
     private const FORMAT_DATE     = 'Y-m-d';
     private const FORMAT_WEEKDAY  = 'w';
-    private const FORMAT_TODAY    = 'today';
-    private const FORMAT_INCR     = '+1 day';
-    private const FORMAT_DECR     = '-1 day';
+
+    private const MODIFY_MIDNIGHT = 'midnight';
+    private const MODIFY_INCR     = '+1 day';
+    private const MODIFY_DECR     = '-1 day';
 
     /**
      * @var string
      */
     private $model;
-
-    /**
-     * @var \DateTimeImmutable
-     */
-    private $today;
 
     /**
      * @var string[]
@@ -32,14 +28,13 @@ final class Calculator implements CalculatorInterface
     /**
      * {@inheritdoc}
      */
-    public function __construct(string $paydateModel, array $holidays = [])
+    public function __construct(string $paydateModel, array $holidays = [], $holidayFactory = '')
     {
         $this->model    = Model::fromNative($paydateModel);
-        $this->today    = new \DateTimeImmutable($this::FORMAT_TODAY);
         $this->holidays = [];
 
         foreach ($holidays as $date) {
-            $this->toDateTime($date);
+            $this->toDateObject($date);
             $this->holidays[$date] = true;
         }
     }
@@ -49,41 +44,31 @@ final class Calculator implements CalculatorInterface
      */
     public function calculatePaydates(string $initialPaydate, int $numberOfPaydates): array
     {
-        $date  = $this->toDateTime($initialPaydate);
+        $date  = $this->toDateObject($initialPaydate);
         $dates = [$initialPaydate];
 
         for ($i = 0; $i < $numberOfPaydates - 1; ++$i) {
-            $date    = $this->nextPaydate($date);
-            $dates[] = $date->format($this::FORMAT_DATE);
+            $date = $date->modify($this->model->toUnits());
+
+            if ($this->isHoliday($date)) {
+                $dates[] = $this->toDateString($this->decreasePaydate($date));
+                continue;
+            }
+
+            if ($this->isWeekend($date)) {
+                $dates[] = $this->toDateString($this->increasePaydate($date));
+                continue;
+            }
+
+            if ($this->isToday($date)) {
+                $dates[] = $this->toDateString($this->increasePaydate($date));
+                continue;
+            }
+
+            $dates[] = $this->toDateString($date);
         }
 
         return $dates;
-    }
-
-    /**
-     * Returns next valid paydate starting from $date.
-     *
-     * @param \DateTimeImmutable $date
-     *
-     * @return bool
-     */
-    public function nextPaydate(\DateTimeImmutable $date): \DateTimeImmutable
-    {
-        $date = $date->modify($this->model->toUnits());
-
-        if ($this->isHoliday($date)) {
-            $date = $this->decreasePaydate($date);
-        }
-
-        if ($this->isWeekend($date)) {
-            $date = $this->increasePaydate($date);
-        }
-
-        if ($this->isToday($date)) {
-            $date = $this->increasePaydate($date);
-        }
-
-        return $date;
     }
 
     /**
@@ -120,7 +105,8 @@ final class Calculator implements CalculatorInterface
      */
     public function isToday(\DateTimeImmutable $date): bool
     {
-        return 0 === $this->today->diff($date)->d;
+        $today = (new \DateTimeImmutable())->modify($this::MODIFY_MIDNIGHT);
+        return 0 === $today->diff($date)->d;
     }
 
     /**
@@ -144,7 +130,7 @@ final class Calculator implements CalculatorInterface
      */
     public function increasePaydate(\DateTimeImmutable $date): \DateTimeImmutable
     {
-        $date = $date->modify($this::FORMAT_INCR);
+        $date = $date->modify($this::MODIFY_INCR);
         return $this->isValidPaydate($date) ? $date : $this->increasePaydate($date);
     }
 
@@ -157,7 +143,7 @@ final class Calculator implements CalculatorInterface
      */
     public function decreasePaydate(\DateTimeImmutable $date): \DateTimeImmutable
     {
-        $date = $date->modify($this::FORMAT_DECR);
+        $date = $date->modify($this::MODIFY_DECR);
         return $this->isValidPaydate($date) ? $date : $this->decreasePaydate($date);
     }
 
@@ -170,7 +156,7 @@ final class Calculator implements CalculatorInterface
      *
      * @return \DateTimeImmutable
      */
-    private function toDateTime(string $dateStr): \DateTimeImmutable
+    private function toDateObject(string $dateStr): \DateTimeImmutable
     {
         $date = \DateTimeImmutable::createFromFormat($this::FORMAT_DATE, $dateStr);
 
@@ -178,6 +164,21 @@ final class Calculator implements CalculatorInterface
             throw new \InvalidArgumentException('Invalid date');
         }
 
-        return $date;
+        return $date->modify($this::MODIFY_MIDNIGHT);
+    }
+
+    /**
+     * Converts $dateStr to DateTimeImmutable object.
+     *
+     * @param string             $dateStr
+     * @param \DateTimeImmutable $date
+     *
+     * @throws \InvalidArgumentException
+     *
+     * @return \DateTimeImmutable
+     */
+    private function toDateString(\DateTimeImmutable $date): string
+    {
+        return $date->format($this::FORMAT_DATE);
     }
 }
