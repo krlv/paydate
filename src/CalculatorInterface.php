@@ -10,9 +10,6 @@ interface CalculatorInterface
     public const PAYDATE_MODEL_BIWEEKLY = 'BIWEEKLY';
     public const PAYDATE_MODEL_WEEKLY   = 'WEEKLY';
 
-    public const FORMAT_DATE     = 'Y-m-d';
-    public const FORMAT_WEEKDAY	 = 'w';
-
     /**
      * @param string   $paydateModel One of the paydate model options MONTHLY|BIWEEKLY|WEEKLY
      * @param string[] $holidays     List of holidays; make sure to provide holidays here

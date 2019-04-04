@@ -14,6 +14,7 @@ return PhpCsFixer\Config::create()
         'increment_style' => ['style' => 'pre'],
         'linebreak_after_opening_tag' => true,
         'blank_line_after_opening_tag' => true,
+        'blank_line_before_statement' => false,
         'dir_constant' => true,
         'heredoc_to_nowdoc' => true,
         'modernize_types_casting' => true,
