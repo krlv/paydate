@@ -11,7 +11,7 @@ final class Calculator implements CalculatorInterface
     private const FORMAT_DATE     = 'Y-m-d';
     private const FORMAT_WEEKDAY  = 'w';
     private const FORMAT_TODAY    = 'today';
-    private const FORMAT_INCR     = '1 day';
+    private const FORMAT_INCR     = '+1 day';
     private const FORMAT_DECR     = '-1 day';
 
     /**
@@ -52,7 +52,7 @@ final class Calculator implements CalculatorInterface
         $date  = $this->toDateTime($initialPaydate);
         $dates = [$initialPaydate];
 
-        for ($i = 0; $i < $numberOfPaydates; ++$i) {
+        for ($i = 0; $i < $numberOfPaydates - 1; ++$i) {
             $date    = $this->nextPaydate($date);
             $dates[] = $date->format($this::FORMAT_DATE);
         }
